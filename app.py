@@ -6,15 +6,16 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.sans-serif"]=["Helvetica"] #设置字体
 plt.rcParams["axes.unicode_minus"]=False #该语句解决图像中的“-”负号的乱码问题
 import jieba 
+import base64
 import re  
 from collections import Counter 
 import csv
 from pyecharts import options as opts 
 from pyecharts.charts import *
 import streamlit_echarts as ste
-import math
 import pandas as pd
 from pyecharts.globals import ThemeType 
+
 #############################################################################################################
 
 # 获取html文本
@@ -27,7 +28,7 @@ def get_html(url):
 # 查找body标签中的数据
 def get_data(html):
     soup=BeautifulSoup(html, 'html.parser')
-    a_tags=soup.find('body')
+    a_tags=soup.get_text()
     return a_tags
 
 # 将body标签中的数据写到txt文件中
@@ -59,13 +60,27 @@ def a_tags_read(a_tags_txt):
 
 # 将分词结果写入CSV文件
 def a_tags_csv(word_counts):
-    # 以写的方式打开CSV文件
-    with open('words1.csv', 'w', encoding='utf-8', newline='') as csvfile:  
-        writer = csv.writer(csvfile)  
-        writer.writerow(['Word', 'Counts'])  # 写入CSV文件的标题行  
-        for word, counts in word_counts.items():
-            if len(word)>1 and counts>1:
-                writer.writerow([word, counts])  # 写入CSV文件中的每一行数据
+    if word_counts:
+        # 以写的方式打开CSV文件
+        with open('words1.csv', 'w', encoding='utf-8', newline='') as csvfile:  
+            writer = csv.writer(csvfile)  
+            writer.writerow(['Word', 'Counts'])  # 写入CSV文件的标题行  
+            for word, counts in word_counts.items():
+                if len(word)>1 and counts>1:
+                    writer.writerow([word, counts])  # 写入CSV文件中的每一行数据
+
+# 下载CSV文件
+def get_download_link(file_path):
+    with open(file_path, "r", encoding="utf-8") as file:
+        file_content = file.read()
+
+    # 编码文件内容为base64
+    file_content_base64 = base64.b64encode(file_content.encode()).decode()
+
+    # 生成下载链接
+    href = f'<a href="data:file/csv;base64,{file_content_base64}" download="{file_path}">下载</a>'
+    return href
+
 
 # 获取词频最高的前20个词
 def a_tags_top(word_counts):
@@ -85,8 +100,8 @@ def common():
         # 获取数据
         a_tags=get_data(html)
         # 生成txt文本
-        a_tags_txt=get_txt(a_tags.text)
-        # 将词放入csv文件
+        a_tags_txt=get_txt(a_tags)
+        # 分词
         word_counts=a_tags_read(a_tags_txt)
         a_tags_csv(word_counts)
         return word_counts
@@ -151,23 +166,18 @@ def plot_plotly_chart(word_count):
 
 # 雷达图
 def plot_leida_chart(word_count):
-    # 转换为列表形式  
-    words = list(word_count.keys())  
-    counts = list(word_count.values())  
-      
-    # 创建Radar对象  
-    radar_chart = Radar()  
-      
-    # 添加schema，设置最大值和指标名称  
-    radar_chart.add_schema(schema=[opts.RadarIndicatorItem(name=word, max_=max_value) for word, max_value in zip(words, counts)]  )  
-      
-    # 添加数据点，这里我们使用counts作为数据点，并通过'o'标记它们  
-    data = [counts]  
-    radar_chart.add("", data, label_opts=opts.LabelOpts(is_show=False),   
-                   linestyle_opts=opts.LineStyleOpts(color="red", width=2),   
-                   areastyle_opts=opts.AreaStyleOpts(color=0.1))  
-    # 设置全局选项，包括标题等 
-    radar_chart.set_global_opts(title_opts=opts.TitleOpts(title="雷达图"))  
+    # 创建Radar对象 
+    radar_chart = Radar()
+    # 获取字典中的所有键  
+    keys = word_count.keys()  
+    # 获取第一个键的值  
+    max_value = word_count[next(iter(keys))]  
+    # 添加schema，设置最大值和指标名称 
+    radar_chart.add_schema(schema=[opts.RadarIndicatorItem(name=key, max_=max_value) for key in word_count.keys()])
+    # 添加数据点，这里我们使用word_count.values()作为数据点  
+    radar_chart.add("", [list(word_count.values())], color="blue")
+    # # 设置全局选项，包括标题等 
+    # radar_chart.set_global_opts(title_opts=opts.TitleOpts(title="雷达图"), toolbox_opts=opts.ToolboxOpts())
     ste.st_pyecharts(radar_chart)
 
     
@@ -205,7 +215,15 @@ def plot_ciyun_chart(word_count,shape_mask):
 # 显示词频
 def get_word():
     word_counts=common()
-   
+    
+    a_tags_csv(word_counts)
+   # 以按钮形式显示下载链接
+    button_label = "下载CSV文件"
+    button_clicked = st.button(button_label)
+    if button_clicked:
+        download_link = get_download_link('words1.csv')
+        st.markdown(download_link, unsafe_allow_html=True)
+        
     # 输出CSV文件
     if word_counts:
         # 将字典转换成列表
