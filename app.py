@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import matplotlib.pyplot as plt
-plt.rcParams["font.sans-serif"]=["SimHei"] #设置字体
+plt.rcParams["font.sans-serif"]=["Helvetica"] #设置字体
 plt.rcParams["axes.unicode_minus"]=False #该语句解决图像中的“-”负号的乱码问题
 import jieba 
 import re  
@@ -11,9 +12,9 @@ import csv
 from pyecharts import options as opts 
 from pyecharts.charts import *
 import streamlit_echarts as ste
+import math
 import pandas as pd
 from pyecharts.globals import ThemeType 
-
 #############################################################################################################
 
 # 获取html文本
@@ -90,9 +91,7 @@ def common():
         a_tags_csv(word_counts)
         return word_counts
     
-##############################################################################################################
-
-        
+###################################绘制图形###########################################################################
 # 绘制折线图
 def plot_line_chart(word_count):
     # 创建对象
@@ -146,7 +145,7 @@ def plot_plotly_chart(word_count):
    # 添加X轴数据
    mianji_chart.add_xaxis(list(word_count.keys()))
    # 使用list(word_count.values())作为Y轴的数据点，数据线是平滑的，不是折线，在折线下方填充颜色以创建面积图，并设置填充的不透明度为0.5
-   mianji_chart.add_yaxis("Counts", list(word_count.values()), is_smooth=True, areastyle_opts=opts.AreaStyleOpts(opacity=0.5))  
+   mianji_chart.add_yaxis("", list(word_count.values()), is_smooth=True, areastyle_opts=opts.AreaStyleOpts(opacity=0.5))  
    mianji_chart.set_global_opts(title_opts=opts.TitleOpts(title="面积图")) 
    ste.st_pyecharts(mianji_chart) 
 
@@ -166,7 +165,7 @@ def plot_leida_chart(word_count):
     data = [counts]  
     radar_chart.add("", data, label_opts=opts.LabelOpts(is_show=False),   
                    linestyle_opts=opts.LineStyleOpts(color="red", width=2),   
-                   areastyle_opts=opts.AreaStyleOpts(color=0.3))  
+                   areastyle_opts=opts.AreaStyleOpts(color=0.1))  
     # 设置全局选项，包括标题等 
     radar_chart.set_global_opts(title_opts=opts.TitleOpts(title="雷达图"))  
     ste.st_pyecharts(radar_chart)
@@ -181,7 +180,6 @@ def plot_ld_charts(word_count):
     # 将字典中的键值对添加到图表中
     wf.add('',[list(z) for z in zip(word_count.keys(), word_count.values())])
     ste.st_pyecharts(wf)
-
 ##############################################################################################################
 # 词云
 def plot_ciyun_chart(word_count,shape_mask):
@@ -204,13 +202,10 @@ def plot_ciyun_chart(word_count,shape_mask):
     st.components.v1.html(html_content, height=500,width=900)
 
 ##############################################################################################################
-
+# 显示词频
 def get_word():
     word_counts=common()
-    
-    
-
-
+   
     # 输出CSV文件
     if word_counts:
         # 将字典转换成列表
@@ -220,7 +215,7 @@ def get_word():
         # 使用st.table()函数显示表格
         st.table(df)
 
-
+# 可视化
 def Visualization():
     #侧边栏选项
     list_baidu_project= ['折线图', '饼图', '柱形图','面积图','散点图','雷达图','漏斗图']
@@ -274,13 +269,6 @@ def main():
         Visualization()
     elif page=="ciyun":
         ciyun()
-
-   
-
-    
-    
-    
-    
 
 if __name__=='__main__':
     main()
